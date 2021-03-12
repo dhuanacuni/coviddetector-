@@ -1,86 +1,118 @@
 <html>
-  <head>
-    <title>Flask + Celery Examples</title>
-    <style>
-        .progress {
-            width: 100%;
-            text-align: center;
-        }
-    </style>
-  </head>
-  <body>
-    <h1>Flask + Celery Examples</h1>
-    <h2>Example 1: Send Asynchronous Email</h2>
-    {% for message in get_flashed_messages() %}
-    <p style="color: red;">{{ message }}</p>
-    {% endfor %}
-    <form method="POST">
-      <p>Send test email to: <input type="text" name="email" value="{{ email }}"></p>
-      <input type="submit" name="submit" value="Send">
-      <input type="submit" name="submit" value="Send in 1 minute">
-    </form>
-    <hr>
-    <h2>Example 2: Long running task with progress updates</h2>
-    <!--<button onclick="start_long_task();">Start Long Calculation</button><br><br>-->
-    <button id="start-bg-job">Start Long Calculation</button><br><br>
-    <div id="progress"></div>
+	<head>
+		<title>COVID-19</title>
+        <style>
+            body {
+  font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen,
+    Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: #61c6f5;
+}
 
-    <script src="//cdnjs.cloudflare.com/ajax/libs/nanobar/0.2.1/nanobar.min.js"></script>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
-    <script>
-        function start_long_task() {
-            // add task status elements
-            div = $('<div class="progress"><div></div><div>0%</div><div>...</div><div>&nbsp;</div></div><hr>');
-            $('#progress').append(div);
+button {
+  font-family: inherit;
+  text-align: center;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  outline: none;
+  color: #ffffff;
+  background-color: rgb(0, 120, 212);
+  padding: 0.5rem 1.2rem;
+  border-radius: 2px;
+  font-size: 1rem;
+  min-width: 6rem;
+}
 
-            // create a progress bar
-            var nanobar = new Nanobar({
-                bg: '#44f',
-                target: div[0].childNodes[0]
-            });
+button:hover {
+  background-color: rgb(16, 110, 190);
+}
 
-            // send ajax POST request to start background job
-            $.ajax({
-                type: 'POST',
-                url: '/longtask',
-                success: function(data, status, request) {
-                    status_url = request.getResponseHeader('Location');
-                    update_progress(status_url, nanobar, div[0]);
-                },
-                error: function() {
-                    alert('Unexpected error');
-                }
-            });
+button.disabled {
+  pointer-events: none;
+  background-color: #cccccc;
+  color: #666666;
+}
+
+#image-selector {
+  font-family: inherit;
+  text-align: center;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  outline: none;
+  color: #ffffff;
+  background-color: rgb(66, 116, 157);
+  padding: 0.5rem 1.2rem;
+  border-radius: 2px;
+  font-size: 1rem;
+  min-width: 6rem;
+}
+
+.upload-box {
+    
+  font-size: 0.8rem;
+  color: #666666;
+  width: 25rem;
+  height: 25rem;
+  background: #fff;
+  border: 0.1rem dashed #838388;
+  border-radius: 0.4rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+
+
+.upload-box:hover {
+  border-color: rgb(0, 120, 212);
+}
+
+        </style>
+	</head>
+
+	<body align="center">
+		<h1>DETECCION DE COVID-19 A PARTIR DE IMAGENES DE RAYOS X</h1>
+		<input id="image-selector" type="file"><br> <br> 
+		<button id="predict-button">Predecir</button><br> <br> 
+		<label class="upload-box"><img id="selected-image" width="390" src=""/></label>
+        <h3>PREDICCION: <span id="result">...</span></h3>
+		<h3>PROBABILIDAD: <span id="probability">...</span></h3>
+	</body>
+
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+
+<script>
+    let base64Image;
+    $("#image-selector").change(function() {
+        let reader = new FileReader();
+        reader.onload = function(e) {
+            let dataURL = reader.result;
+            $('#selected-image').attr("src", dataURL);
+            base64Image = dataURL.replace(/^data:image\/(png|jpg|jpeg);base64,/, "");
+            console.log(base64Image);
         }
-        function update_progress(status_url, nanobar, status_div) {
-            // send GET request to status URL
-            $.getJSON(status_url, function(data) {
-                // update UI
-                percent = parseInt(data['current'] * 100 / data['total']);
-                nanobar.go(percent);
-                $(status_div.childNodes[1]).text(percent + '%');
-                $(status_div.childNodes[2]).text(data['status']);
-                if (data['state'] != 'PENDING' && data['state'] != 'PROGRESS') {
-                    if ('result' in data) {
-                        // show result
-                        $(status_div.childNodes[3]).text('Result: ' + data['result']);
-                    }
-                    else {
-                        // something unexpected happened
-                        $(status_div.childNodes[3]).text('Result: ' + data['state']);
-                    }
-                }
-                else {
-                    // rerun in 2 seconds
-                    setTimeout(function() {
-                        update_progress(status_url, nanobar, status_div);
-                    }, 2000);
-                }
-            });
+        reader.readAsDataURL($("#image-selector")[0].files[0]);
+        $("#result").text("");
+        $("#probability").text("");
+
+    });
+
+    $("#predict-button").click(function(){
+            let message = {
+            image: base64Image
         }
-        $(function() {
-            $('#start-bg-job').click(start_long_task);
+        console.log(message);
+        $.post("http://127.0.0.1:5000/predict", JSON.stringify(message), function(response){
+            $("#result").text(response.prediction.result);
+            $("#probability").text(response.prediction.accuracy.toFixed(2));
+            console.log(response);
         });
-    </script>
-  </body>
+    });
+    
+</script>
+
 </html>
